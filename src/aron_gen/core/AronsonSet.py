@@ -341,6 +341,18 @@ class AronsonSet:
         """
         return self.forward_generate(AronsonSequence(self.letter, [], self.direction))
 
+    def is_valid_extension(self, elem, current_perm):
+        """
+        helper for checking validity of new sequence elements
+        :param elem: to add
+        :param current_perm: which elem is added to
+        :return: True or False
+        """
+        if elem in self.non_elements or (elem - 1 in current_perm and elem - 2 in current_perm) or \
+                (elem + 1 in current_perm and elem + 2 in current_perm):
+            return False
+        return True
+
     # Currently infeasible from n >= 4
     def generate_full(self, n_iterations: int, error_rate: float = 0.):
         """
@@ -351,19 +363,7 @@ class AronsonSet:
         :return: None
         """
 
-        def is_valid_extension(elem, current_perm):
-            """
-            helper for checking validity of new sequence elements
-            :param elem: to add
-            :param current_perm: which elem is added to
-            :return: True or False
-            """
-            if elem in self.non_elements or (elem - 1 in current_perm and elem - 2 in current_perm) or \
-                    (elem + 1 in current_perm and elem + 2 in current_perm):
-                return False
-            return True
-
-        def backtrack(current_perm, current_sum, remaining, max_len, error_rate=0.0):
+        def backtrack(current_perm, current_sum, remaining, max_len):
             if len(current_perm) == max_len:
                 if max_len > PRUNE_THRESH:
                     yield current_perm.copy()
@@ -371,20 +371,19 @@ class AronsonSet:
 
                 mean = current_sum / max_len
                 metric = max(x - mean for x in current_perm)
-                upper_bound = ceil(log2(max_len) * ORD_TABLE[cur_ord_key]) + 1
+                upper_metric_bound = ceil(log2(max_len) * ORD_TABLE[cur_ord_key]) + 1
 
-                if metric <= (1 - error_rate) * upper_bound:
+                if metric <= (1 - error_rate) * upper_metric_bound:
                     yield current_perm.copy()
                 return
 
             for elem in set(remaining):
-                if is_valid_extension(elem, current_perm):
+                if self.is_valid_extension(elem, current_perm):
                     yield from backtrack(
                         current_perm + [elem],
                         current_sum + elem,
                         remaining - {elem},
-                        max_len,
-                        error_rate
+                        max_len
                     )
 
         if n_iterations <= 0:

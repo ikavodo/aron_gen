@@ -18,8 +18,8 @@ def n2w(n):
     :param n: The number to convert.
     :return: The ordinal word representation of the number.
     """
-    os = num2words(n, ordinal=True).replace(" and", "")
-    return os.replace(", ", "").replace(" ", "").replace("-", "")
+    ord_repr = num2words(n, ordinal=True).replace(" and", "")
+    return ord_repr.replace(", ", "").replace(" ", "").replace("-", "")
 
 
 class AronsonSetTests(unittest.TestCase):
@@ -524,7 +524,6 @@ class AronsonSetTests(unittest.TestCase):
                     if not condition:
                         print(direction, err_rate)
                     self.assertTrue(condition)
-
 
     def test_and(self):
         # check same

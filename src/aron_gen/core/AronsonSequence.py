@@ -38,6 +38,22 @@ class Direction(Enum):
         return Direction.BACKWARD if self == Direction.FORWARD else Direction.FORWARD
 
 
+class VerificationError(Exception):
+    """
+    Custom exception raised when AronsonSequence verification (is_correct()) fails.
+    :param message: The error message to be shown.
+    :param input_seq: The input data that caused the failure.
+    """
+
+    def __init__(self, message="Verifier failed", input_seq=None):
+        self.message = message
+        self.input_seq = input_seq
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f"{self.message}: {self.input_seq}"
+
+
 class AronsonSequence:
     """
     Represents an Aronson sequence, which is a sequence of elements with each element referring to an ordinal appearing
@@ -58,7 +74,13 @@ class AronsonSequence:
             cls.num2words_dict[n] = (os, os.replace(" and", "").replace(", ", "").replace(" ", "").replace("-", ""))
         return cls.num2words_dict[n][0] if not stripped else cls.num2words_dict[n][1]
 
-    def __init__(self, letter: str, elements: Optional[list[int]] = None, direction: Direction = Direction.FORWARD):
+    # TODO implement
+    def _fast_verifier(self, elements):
+        pass
+
+    def __init__(self, letter: str, elements: Optional[list[int]] = None, direction: Direction = Direction.FORWARD,
+                 # change these later if desired
+                 *, error_check: bool = False, ignore_errors: bool = True):
         """
         Initializes the AronsonSequence with the given letter, elements, and direction.
 
@@ -71,6 +93,15 @@ class AronsonSequence:
         self.check_elements(elements)
         self.check_letter(letter)
         self.check_direction(direction)
+
+        if error_check:
+            try:
+                self._fast_verifier(elements)
+            except VerificationError:
+                if ignore_errors:
+                    pass
+                else:
+                    raise
 
         # Deduplicate while preserving order
         seen = set()

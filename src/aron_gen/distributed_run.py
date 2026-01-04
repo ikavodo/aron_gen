@@ -5,7 +5,8 @@ import multiprocessing
 from math import ceil, log2
 
 from aron_gen.cli import run_generation
-from aron_gen.core.AronsonSet import AronsonSet, PRUNE_THRESH, ORD_INITIAL, ORD_TABLE
+from aron_gen.core.AronsonSequence import VerificationError
+from aron_gen.core.AronsonSet import AronsonSequence, AronsonSet, PRUNE_THRESH, ORD_INITIAL, ORD_TABLE
 
 # Determine number of worker processes from Slurm or default to all CPUs
 default_procs = multiprocessing.cpu_count()
@@ -60,16 +61,24 @@ def worker_task(args):
     args: (elem, initial_remaining, iteration, cur_ord_key, non_elements, letter, direction, error_rate)
     Generates AronsonSequence instances that pass is_correct.
     """
-    from aron_gen.core.AronsonSet import AronsonSequence
     (elem, initial_remaining, iteration, cur_ord_key,
      non_elements, letter, direction, error_rate, is_correct_fn) = args
 
     valid_seqs = []
     perms = backtrack_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate)
     for perm in perms:
-        seq = AronsonSequence(letter, perm, direction)
-        if is_correct_fn(seq):
+        try:
+            seq = AronsonSequence(
+                letter,
+                perm,
+                direction,
+                error_check=True,
+                ignore_errors=False,
+            )
             valid_seqs.append(seq)
+        except VerificationError:
+            continue
+
     return valid_seqs
 
 

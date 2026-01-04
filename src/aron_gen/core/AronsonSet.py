@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from itertools import islice, combinations, permutations
 from math import log2, ceil
-from .AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX
+from .AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX, VerificationError
 from collections import defaultdict, Counter
 from typing import Callable, Literal
 from contextlib import suppress
@@ -16,22 +16,6 @@ PRUNE_THRESH = 4
 
 
 # Exception classes
-
-
-class VerificationError(Exception):
-    """
-    Custom exception raised when AronsonSequence verification (is_correct()) fails.
-    :param message: The error message to be shown.
-    :param input_seq: The input data that caused the failure.
-    """
-
-    def __init__(self, message="Verifier failed", input_seq=None):
-        self.message = message
-        self.input_seq = input_seq
-        super().__init__(self.message)
-
-    def __str__(self):
-        return f"{self.message}: {self.input_seq}"
 
 
 class GenError(Exception):
@@ -106,6 +90,7 @@ class AronsonSet:
         """
         Constructor from set of AronsonSequence instances.
         :param iter_dict: Dictionary of iterations
+        :param error_check: over sequences
         :return: Class instance
         """
         if not iter_dict or iter_dict is None:
@@ -161,7 +146,7 @@ class AronsonSet:
         iter_dict[0] = set(seqs)
 
         # Delegate to fast internal constructor
-        return cls.from_dict(iter_dict)
+        return cls.from_dict(iter_dict, error_check=error_check)
 
     def is_correct(self, seq: AronsonSequence):
         """
@@ -223,6 +208,7 @@ class AronsonSet:
             idx_rel = 1 + s.find(self.letter)  # Find the relative position of the letter
             if idx_rel <= 0:  # Letter not found in string buffer, raise StopIteration
                 break
+
             idx += idx_rel
             yield idx
             ordinal = seq.n2w(idx)

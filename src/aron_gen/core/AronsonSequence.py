@@ -126,28 +126,35 @@ class AronsonSequence:
         seen = set()
         self.elements = [x for x in elements if not (x in seen or seen.add(x))]
         self.prefix = max(self.elements) if self.elements else 0
-
+        verifier_output = None
         if check_semantics:
             try:
                 # get full sentence with no spaces or commas
-                self._verifier()
+                verifier_output = self._verifier()
             except VerificationError:
                 raise
 
         # build internal fields relating to sentence representation
-        self._update_sentence()
+        self._update_sentence(verifier_output)
 
-    def _update_sentence(self, elements=None):
+    def _update_sentence(self, elements=None, sentence=None):
         """
         Updates the string representation of the sequence, its sanitized form, occurrence set,
         and optionally builds or updates the referral dictionary.
         :param elements: Optional iterable of new elements to update in refer_dict;
                          if None, rebuild refer_dict from scratch using self.elements.
         """
-        self.sentence_repr = self._build_sentence_repr()
-        self.sentence = self.sentence_repr.replace(", ", "").replace(" ", "").replace("-", "")
-        s = self.sentence if self.direction == Direction.FORWARD else self.sentence[::-1]
-        self.occurrences = {i + 1 for i, char in enumerate(s) if char == self.letter}
+        if sentence is None:
+            # build from scratch
+            self.sentence_repr = self._build_sentence_repr()
+            self.sentence = self.sentence_repr.replace(", ", "").replace(" ", "").replace("-", "")
+            sentence = self.sentence if self.direction == Direction.FORWARD else self.sentence[::-1]
+        else:
+            # set this just in case, write it once later if necessary
+            self.sentence_repr = None
+            self.sentence = sentence if self.direction == Direction.FORWARD else sentence[::-1]
+
+        self.occurrences = {i + 1 for i, char in enumerate(sentence) if char == self.letter}
 
         target_elements = self.elements if elements is None else elements
         updates = {x: self._set_refer_val(x) for x in target_elements}
@@ -447,10 +454,12 @@ class AronsonSequence:
         """
 
         # return upper case
-        s = self.display_letter + self.sentence_repr[1:]
+        sentence_repr = self._build_sentence_repr() if self.sentence_repr is None else self.sentence_repr
+        s = self.display_letter + sentence_repr[1:]
         if not self.elements:
             # The empty sequence is the same in both directions
             return s
+
         return s + REPR_FORWARD if self.direction == Direction.FORWARD else REPR_BACKWARD + s
 
     def __eq__(self, other):

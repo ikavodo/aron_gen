@@ -23,6 +23,7 @@ def run_generation(n):
     for direction, dir_key in directions:
         aset = AronsonSet('t', direction)
         try:
+            # faster than not checking semantics
             aset.generate_full(n)
         except Exception as e:
             print(f"Warning: Generation stopped due to {e}")

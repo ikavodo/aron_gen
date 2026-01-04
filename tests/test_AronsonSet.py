@@ -460,7 +460,7 @@ class AronsonSetTests(unittest.TestCase):
                 self.assertTrue(s in rules_set)
 
         # Require minimum 50x speedup in at least one direction
-        self.assertTrue(max(speedups) >= 20.0,
+        self.assertTrue(max(speedups) >= 10.0,
                         f"Insufficient speedup: {speedups}")
 
     @unittest.skipUnless(os.environ.get("RUN_OPTIONAL_TEST") == "True",

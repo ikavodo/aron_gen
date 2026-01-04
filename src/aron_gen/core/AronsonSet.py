@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from itertools import islice, combinations, permutations
 from math import log2, ceil
 from .AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX
 from collections import defaultdict, Counter
 from typing import Callable, Literal
-from functools import reduce
 from contextlib import suppress
 
 # global: dictionary with maximum ordinal lengths per number of bits in decimal representation
@@ -84,37 +85,24 @@ class AronsonSet:
 
     # constructors
     @classmethod
-    def from_sequence(cls, seq: AronsonSequence = None):
+    def from_sequence(cls, seq: AronsonSequence = None, error_check: bool = True):
         """
         constructor of singleton set (holding a single non-empty AronsonSequence instance).
         :param seq: AronsonSequence
+        :param error_check: error checking
         :return: instance
         """
         seq = seq if seq is not None else AronsonSequence('t')
-        if not seq.is_correct():
+        if error_check and not seq.is_correct():
             # sequence must be correct to generate a set instance
             raise VerificationError(input_seq=seq)
+
         obj = cls(seq.get_letter(), seq.get_direction())
         obj._update_iter({seq})  # update seen_seqs and iter_dict
         return obj
 
     @classmethod
-    def from_set(cls, seqs: set[AronsonSequence] = None):
-        """
-        constructor from set of AronsonSequence instances.
-        :param seqs: set of AronsonSequence instances
-        :return: class instance
-        """
-        seqs = seqs or {AronsonSequence('t')}
-        field_set = {(s.get_letter(), s.get_direction()) for s in seqs}
-        if len(field_set) > 1:
-            raise ValueError("All sequences must have the same letter and direction")
-
-        # Union over singleton instances
-        return reduce(lambda a, b: a | b, (cls.from_sequence(seq) for seq in seqs))
-
-    @classmethod
-    def from_dict(cls, iter_dict: dict[int, set[AronsonSequence]] = None):
+    def from_dict(cls, iter_dict: dict[int, set[AronsonSequence]] = None, error_check: bool = True):
         """
         Constructor from set of AronsonSequence instances.
         :param iter_dict: Dictionary of iterations
@@ -124,6 +112,7 @@ class AronsonSet:
             return AronsonSet('t')  # default
 
         seqs = next((v for v in iter_dict.values() if v), set())
+
         if not seqs:
             # Safety measure
             raise ValueError("Dictionary must hold non-empty value")
@@ -133,6 +122,12 @@ class AronsonSet:
 
         if len(field_set) > 1:
             raise ValueError("All sequences must have letter and direction of current set")
+
+        if error_check:
+            for seq_set in iter_dict.values():
+                for s in seq_set:
+                    if not s.is_correct():
+                        raise VerificationError(input_seq=s)
 
         # look into dictionary for letter and direction fields
         seq = next(iter(seqs))
@@ -144,8 +139,29 @@ class AronsonSet:
             # no side effects
             iter_dict = iter_dict.copy()
             iter_dict[0].add(emp_seq)
+
         new_instance._set_iter_dict(iter_dict)
         return new_instance
+
+    @classmethod
+    def from_set(
+            cls,
+            seqs: set[AronsonSequence] | None = None,
+            error_check: bool = True,
+    ) -> "AronsonSet":
+        """
+        Construct an AronsonSet from an existing set of AronsonSequence instances.
+        All sequences are assigned to iteration 0. No generation is performed.
+        """
+        if seqs is None:
+            seqs = {AronsonSequence('t')}
+
+        # Build iteration dictionary directly
+        iter_dict = defaultdict(set)
+        iter_dict[0] = set(seqs)
+
+        # Delegate to fast internal constructor
+        return cls.from_dict(iter_dict)
 
     def is_correct(self, seq: AronsonSequence):
         """

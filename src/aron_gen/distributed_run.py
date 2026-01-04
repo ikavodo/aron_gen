@@ -81,10 +81,10 @@ def generate_full_parallel(self, n_iterations: int, error_rate: float = 0.0):
     if n_iterations <= 0:
         return
 
+    cur_ord_key = ORD_INITIAL
     while self.cur_iter < n_iterations:
         self.cur_iter += 1
         iteration = self.cur_iter
-        cur_ord_key = ORD_INITIAL
         upper_bound = iteration * ORD_TABLE[cur_ord_key] + 2 * 2 * self.get_prefix_idx()
         if upper_bound >= 10 ** (cur_ord_key + 1):
             cur_ord_key += 1

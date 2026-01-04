@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=65.5.1", "wheel>=0.38.4"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aron_gen"
+version = "0.1.7"
+description = "Generates and verifies Aronson sequences"
+readme = "README.md"
+authors = [
+    { name = "Ido Akov", email = "ido.akov1@alumni.aalto.fi" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "colorama==0.4.6",
+    "docopt==0.6.2",
+    "exceptiongroup==1.2.2",
+    "iniconfig==2.1.0",
+    "num2words==0.5.14",
+    "packaging==24.2",
+    "pluggy==1.5.0",
+    "pytest==8.3.5",
+    "tomli==2.2.1"
+]
+
+[project.urls]
+Homepage = "https://github.com/ikavodo/aron_gen"
+Repository = "https://github.com/ikavodo/aron_gen"
+Issues = "https://github.com/ikavodo/aron_gen/issues"
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["aron_gen*"]
+
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
+
+[project.scripts]
+aron_gen = "aron_gen.__main__:main"

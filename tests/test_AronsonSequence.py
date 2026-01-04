@@ -2,12 +2,13 @@ import unittest
 from itertools import permutations
 
 from num2words import num2words
-from AronsonSequence import AronsonSequence, REPR_PREFIX, REPR_SUFFIX, Refer, Direction, REPR_FORWARD, \
+from aron_gen.core.AronsonSequence import AronsonSequence, REPR_PREFIX, REPR_SUFFIX, Refer, Direction, REPR_FORWARD, \
     REPR_BACKWARD
 
 # take into account letter at beginning of sentence
 LEN_REPR_PREFIX = len(REPR_PREFIX.replace(" ", "")) + 1
 LEN_REPR_SUFFIX = len(REPR_SUFFIX.replace(" ", ""))
+
 
 class AronsonSequenceTests(unittest.TestCase):
     """ unit test for AronsonSet"""

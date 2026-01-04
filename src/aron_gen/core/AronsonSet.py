@@ -1,7 +1,6 @@
 from itertools import islice, combinations, permutations
 from math import log2, ceil
-
-from AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX
+from .AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX
 from collections import defaultdict, Counter
 from typing import Callable, Literal
 from functools import reduce
@@ -11,6 +10,8 @@ from contextlib import suppress
 ORD_TABLE = {i + 1: j for i, j in enumerate([7, 14, 26, 39, 45, 56, 69, 75, 87, 99])}
 # initial key for maximum ordinal length
 ORD_INITIAL = 2
+# for n_iters > 4 don't prune, as don't know enough at this point
+PRUNE_THRESH = 4
 
 
 # Exception classes
@@ -189,7 +190,7 @@ class AronsonSet:
         # using __add__() operator of AronsonSequence class over individual elements
         return {seq.copy() + occ for occ in occurrences}
 
-    def _get_prefix_idx(self):
+    def get_prefix_idx(self):
         return len(REPR_PREFIX.replace(" ", "")) + 1 if self.direction == Direction.FORWARD else len(
             REPR_SUFFIX.replace(" ", ""))
 
@@ -200,7 +201,7 @@ class AronsonSet:
         :return: A generator yielding new indices for the sequence.
         """
         idx, s = seq.get_prefix(), seq.get_sentence()
-        pref_idx = self._get_prefix_idx()
+        pref_idx = self.get_prefix_idx()
         s = s[idx:-pref_idx] if self.direction == Direction.FORWARD else s[pref_idx: -idx if idx else None][::-1]
         while True:
             idx_rel = 1 + s.find(self.letter)  # Find the relative position of the letter
@@ -313,7 +314,7 @@ class AronsonSet:
         sentence_len = len(seq.get_sentence())
         # generate all singletons if no input
         lower_bound = 1 if seq.is_empty() else sentence_len - (
-            self._get_prefix_idx()) - 1
+            self.get_prefix_idx()) - 1
         new_seqs = set()
         # digits in sentence length
         ord_key = len(str(sentence_len))
@@ -362,34 +363,29 @@ class AronsonSet:
                 return False
             return True
 
-        def backtrack(current_perm, current_sum, remaining, max_len):
-            """
-            helper for looking over potential sequences
-            :param current_perm: input to add to
-            :param current_sum: ongoing computation of metric
-            :param remaining: elements to add
-            :param max_len: of generation
-            :return: None
-            """
+        def backtrack(current_perm, current_sum, remaining, max_len, error_rate=0.0):
             if len(current_perm) == max_len:
+                if max_len > PRUNE_THRESH:
+                    yield current_perm.copy()
+                    return
+
                 mean = current_sum / max_len
                 metric = max(x - mean for x in current_perm)
-                upper_metric_bound = ceil(log2(len(current_perm)) * ORD_TABLE[cur_ord_key])
-                if max_len >= 4 and error_rate <= 1e-3:
-                    # misses ~3e-4 percent of sequences of length 4
-                    upper_metric_bound += 1
+                upper_bound = ceil(log2(max_len) * ORD_TABLE[cur_ord_key]) + 1
 
-                if metric <= (1 - error_rate) * upper_metric_bound:
-                    # don't allow outliers
+                if metric <= (1 - error_rate) * upper_bound:
                     yield current_perm.copy()
                 return
 
-            for elem in remaining:
+            for elem in set(remaining):
                 if is_valid_extension(elem, current_perm):
-                    current_perm.append(elem)
-                    remaining.remove(elem)
-                    yield from backtrack(current_perm, current_sum + elem, remaining, max_len)
-                    remaining.add(current_perm.pop())
+                    yield from backtrack(
+                        current_perm + [elem],
+                        current_sum + elem,
+                        remaining - {elem},
+                        max_len,
+                        error_rate
+                    )
 
         if n_iterations <= 0:
             return
@@ -399,7 +395,7 @@ class AronsonSet:
 
         while self.cur_iter < n_iterations:
             self.cur_iter += 1
-            upper_bound = self.cur_iter * ORD_TABLE[cur_ord_key] + 2 * self._get_prefix_idx()
+            upper_bound = self.cur_iter * ORD_TABLE[cur_ord_key] + 2 * self.get_prefix_idx()
             if upper_bound >= 10 ** (cur_ord_key + 1):
                 cur_ord_key += 1
 
@@ -564,6 +560,10 @@ class AronsonSet:
         """ Get all sequences holding elements not appearing in any sequence in another set"""
         missing_elements = self.get_elements() - other.get_elements()
         return {seq for seq in self.seen_seqs if any(elem in seq for elem in missing_elements)}
+
+    def is_empty(self):
+        return len(self.seen_seqs) == 1 and self.seen_seqs == {AronsonSequence(self.get_letter(), [],
+                                                                               self.direction)}
 
     # Utility methods
     def copy(self):

@@ -1,10 +1,14 @@
-import os
+from pathlib import Path
+
 from .core.AronsonSet import AronsonSet, Direction
+
+BASE_DIR = Path(__file__).resolve().parents[2]  # parent of parent
+DATA_DIR = BASE_DIR / "data"
 
 
 def run_generation(n):
-    dir_name = f"aron_gen_data_iters={n}"
-    os.makedirs(dir_name, exist_ok=True)
+    dir_name = DATA_DIR / f"iters={n}"
+    dir_name.mkdir(parents=True, exist_ok=True)
 
     directions = [
         (Direction.FORWARD, 'forward'),
@@ -30,7 +34,7 @@ def run_generation(n):
                 0 if not iter_num else stats[dir_key][iter_num - 1]
             )
 
-    with open(f'{dir_name}/ground_truth_seqs.py', 'w') as f:
+    with open(f'{dir_name}/seqs.py', 'w') as f:
         f.write(f"# Elements corresponding to all Aronson sequences of length up to n={n}\n")
         f.write(f"forward_elems = [\n")
         for elem in elements['forward']:
@@ -41,7 +45,7 @@ def run_generation(n):
             f.write(f"    {elem},\n")
         f.write("]\n")
 
-    with open(f'{dir_name}/ground_truth_stats.py', 'w') as f:
+    with open(f'{dir_name}/stats.py', 'w') as f:
         f.write("# Ground truth for number of sets per iteration\n")
         f.write(f"forward_stats = {stats['forward']}\n")
         f.write(f"backward_stats = {stats['backward']}\n")

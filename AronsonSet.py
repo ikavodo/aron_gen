@@ -1,7 +1,7 @@
 from itertools import islice, combinations, permutations
 from math import log2, ceil
 
-from AronsonSequence import AronsonSequence, Direction, Refer, LEN_PREFIX, LEN_SUFFIX
+from AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX
 from collections import defaultdict, Counter
 from typing import Callable, Literal
 from functools import reduce
@@ -189,6 +189,10 @@ class AronsonSet:
         # using __add__() operator of AronsonSequence class over individual elements
         return {seq.copy() + occ for occ in occurrences}
 
+    def _get_prefix_idx(self):
+        return len(REPR_PREFIX.replace(" ", "")) + 1 if self.direction == Direction.FORWARD else len(
+            REPR_SUFFIX.replace(" ", ""))
+
     def _agen(self, seq: AronsonSequence):
         """
         Internal generator for backwards-based generation.
@@ -196,7 +200,8 @@ class AronsonSet:
         :return: A generator yielding new indices for the sequence.
         """
         idx, s = seq.get_prefix(), seq.get_sentence()
-        s = s[idx:-LEN_SUFFIX] if self.direction == Direction.FORWARD else s[LEN_PREFIX: -idx if idx else None][::-1]
+        pref_idx = self._get_prefix_idx()
+        s = s[idx:-pref_idx] if self.direction == Direction.FORWARD else s[pref_idx: -idx if idx else None][::-1]
         while True:
             idx_rel = 1 + s.find(self.letter)  # Find the relative position of the letter
             if idx_rel <= 0:  # Letter not found in string buffer, raise StopIteration
@@ -308,7 +313,7 @@ class AronsonSet:
         sentence_len = len(seq.get_sentence())
         # generate all singletons if no input
         lower_bound = 1 if seq.is_empty() else sentence_len - (
-            LEN_SUFFIX if seq.direction == Direction.FORWARD else LEN_PREFIX) - 1
+            self._get_prefix_idx()) - 1
         new_seqs = set()
         # digits in sentence length
         ord_key = len(str(sentence_len))
@@ -390,10 +395,11 @@ class AronsonSet:
             return
 
         # generation engine
+        cur_ord_key = ORD_INITIAL
+
         while self.cur_iter < n_iterations:
             self.cur_iter += 1
-            cur_ord_key = ORD_INITIAL
-            upper_bound = self.cur_iter * ORD_TABLE[cur_ord_key] + 2 * LEN_PREFIX
+            upper_bound = self.cur_iter * ORD_TABLE[cur_ord_key] + 2 * self._get_prefix_idx()
             if upper_bound >= 10 ** (cur_ord_key + 1):
                 cur_ord_key += 1
 
@@ -664,7 +670,7 @@ class AronsonSet:
             raise ValueError("Set contains only the empty sequence")
         return max(seq.get_prefix() for seq in self.seen_seqs)
 
-    def get_len_dict(self, generated_full=True):
+    def get_len_dict(self, generated_full=False):
         """
         get dictionary mapping lengths of sequences to number of sequences in set.
         :return:

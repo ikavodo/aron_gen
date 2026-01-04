@@ -12,3 +12,9 @@
 # n = 2: 67
 # n = 3: 771
 # n = 4: 13113
+
+# Direction.FORWARD & Direction.BACKWARD
+# n = 0: 1
+# n = 1: 2
+# n = 2: 4
+# n = 3: 7

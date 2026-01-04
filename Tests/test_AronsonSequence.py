@@ -2,9 +2,12 @@ import unittest
 from itertools import permutations
 
 from num2words import num2words
-from AronsonSequence import AronsonSequence, PREFIX, SUFFIX, Refer, Direction, REPR_FORWARD, \
-    REPR_BACKWARD, LEN_PREFIX, LEN_SUFFIX
+from AronsonSequence import AronsonSequence, REPR_PREFIX, REPR_SUFFIX, Refer, Direction, REPR_FORWARD, \
+    REPR_BACKWARD
 
+# take into account letter at beginning of sentence
+LEN_REPR_PREFIX = len(REPR_PREFIX.replace(" ", "")) + 1
+LEN_REPR_SUFFIX = len(REPR_SUFFIX.replace(" ", ""))
 
 class AronsonSequenceTests(unittest.TestCase):
     """ unit test for AronsonSet"""
@@ -59,7 +62,7 @@ class AronsonSequenceTests(unittest.TestCase):
         # test that human representation is correct
         seq = AronsonSequence('t', [25], Direction.FORWARD)
         self.assertTrue(repr(seq)[0].isupper())
-        self.assertIn(PREFIX + num2words(25, ordinal=True) + SUFFIX, repr(seq))
+        self.assertIn(REPR_PREFIX + num2words(25, ordinal=True) + REPR_SUFFIX, repr(seq))
         self.assertIn(REPR_FORWARD, repr(seq))
         self.assertEqual(str(seq), repr(seq))
         seq = AronsonSequence('t', [100, 101], Direction.BACKWARD)
@@ -76,7 +79,7 @@ class AronsonSequenceTests(unittest.TestCase):
     def test_sentence(self):
         # test that the internal sentence is correct, use something with hyphen
         seq = AronsonSequence('t')
-        suffix = PREFIX.replace(" ", "") + seq.n2w(25) + SUFFIX.replace(" ", "")
+        suffix = REPR_PREFIX.replace(" ", "") + seq.n2w(25) + REPR_SUFFIX.replace(" ", "")
         elems = [3, 4]
         test_sequences = [
             (AronsonSequence('t', [25], Direction.FORWARD), suffix),
@@ -132,8 +135,8 @@ class AronsonSequenceTests(unittest.TestCase):
         ]
         for seq, expected in test_cases:
             with self.subTest(seq=seq):
-                rel_pos = LEN_PREFIX if seq.get_direction() == Direction.FORWARD \
-                    else LEN_SUFFIX
+                rel_pos = LEN_REPR_PREFIX if seq.get_direction() == Direction.FORWARD \
+                    else LEN_REPR_SUFFIX
                 for idx_range, _ in seq.get_refer_dict().values():
                     self.assertIn(rel_pos, idx_range)
 
@@ -309,7 +312,7 @@ class AronsonSequenceTests(unittest.TestCase):
 
     def test_set_elements_append(self):
         for direction in Direction:
-            suffix_ind = len(SUFFIX) + len(REPR_FORWARD) if direction == Direction.FORWARD else len(REPR_BACKWARD)
+            suffix_ind = len(REPR_SUFFIX) + len(REPR_FORWARD) if direction == Direction.FORWARD else len(REPR_BACKWARD)
 
             for append_flag in [True, False]:
                 seq = AronsonSequence('t', [1, 2], direction)
@@ -370,9 +373,9 @@ class AronsonSequenceTests(unittest.TestCase):
     def test_get_range(self):
         seq = AronsonSequence('t', [1], Direction.FORWARD)
         r, _ = seq.get_reference(1)
-        self.assertEqual(r, range(LEN_PREFIX, len(seq.get_sentence()) - LEN_SUFFIX))
+        self.assertEqual(r, range(LEN_REPR_PREFIX, len(seq.get_sentence()) - LEN_REPR_SUFFIX))
         seq.flip_direction()
-        self.assertEqual(r, range(LEN_SUFFIX, len(seq.get_sentence()) - LEN_PREFIX))
+        self.assertEqual(r, range(LEN_REPR_SUFFIX, len(seq.get_sentence()) - LEN_REPR_PREFIX))
 
     def test_get_reference(self):
         for direction in Direction:

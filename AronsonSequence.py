@@ -5,11 +5,8 @@ from num2words import num2words
 from typing import Optional
 
 # global strings
-PREFIX = " is the "
-SUFFIX = " letter"
-# take into account letter at beginning of sentence
-LEN_PREFIX = len(PREFIX.replace(" ", "")) + 1
-LEN_SUFFIX = len(SUFFIX.replace(" ", ""))
+REPR_PREFIX = " is the "
+REPR_SUFFIX = " letter"
 REPR_FORWARD = " in this sentence, not counting commas and spaces"
 REPR_BACKWARD = "Not counting commas and spaces, in this sentence backwards "
 
@@ -148,8 +145,8 @@ class AronsonSequence:
         """
         # reverse order if backwards
         elem_ord = self.elements if self.direction == Direction.FORWARD else self.elements[::-1]
-        return f"{self.letter + PREFIX}{', '.join(self.n2w(i, stripped=False) for i in elem_ord)}{SUFFIX}".replace(
-            "  ", " ")
+        str_body = ', '.join(self.n2w(i, stripped=False) for i in elem_ord)
+        return f"{self.letter + REPR_PREFIX}{str_body}{REPR_SUFFIX}".replace("  ", " ")
 
     def _set_refer_val(self, elem):
         """

@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]  # parent of parent
 DATA_DIR = BASE_DIR / "data"
 
 
-def run_generation(n):
+def run_generation(n, check_semantics=True):
     dir_name = DATA_DIR / f"iters={n}"
     dir_name.mkdir(parents=True, exist_ok=True)
 
@@ -21,7 +21,7 @@ def run_generation(n):
     for direction, dir_key in directions:
         aset = AronsonSet('t', direction)
         try:
-            aset.generate_full(n)
+            aset.generate_full(n, check_semantics=check_semantics)
         except Exception as e:
             print(f"Warning: Generation stopped due to {e}")
 

@@ -62,21 +62,30 @@ def worker_task(args):
     Generates AronsonSequence instances that pass is_correct.
     """
     (elem, initial_remaining, iteration, cur_ord_key,
-     non_elements, letter, direction, error_rate, is_correct_fn) = args
+     non_elements, letter, direction, error_rate, is_correct_fn, check_semantics) = args
 
     valid_seqs = []
     perms = backtrack_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate)
     for perm in perms:
-        try:
+        if check_semantics:
+            try:
+                seq = AronsonSequence(
+                    letter,
+                    perm,
+                    direction,
+                    check_semantics=check_semantics,
+                )
+                valid_seqs.append(seq)
+            except VerificationError:
+                continue
+        else:
             seq = AronsonSequence(
                 letter,
                 perm,
                 direction,
-                check_semantics=True,
             )
-            valid_seqs.append(seq)
-        except VerificationError:
-            continue
+            if is_correct_fn(seq):
+                valid_seqs.append(seq)
 
     return valid_seqs
 
@@ -85,7 +94,7 @@ def worker_task(args):
 # Parallel generate_full implementation
 # --------------------------------------------------
 
-def generate_full_parallel(self, n_iterations: int, error_rate: float = 0.0):
+def generate_full_parallel(self, n_iterations: int, error_rate: float = 0.0, check_semantics=True):
     if n_iterations <= 0:
         return
 
@@ -110,7 +119,8 @@ def generate_full_parallel(self, n_iterations: int, error_rate: float = 0.0):
             self.letter,
             self.direction,
             error_rate,
-            self.is_correct
+            self.is_correct,
+            check_semantics
         )
         tasks = [(elem, *common) for elem in top_elems]
 
@@ -133,10 +143,12 @@ AronsonSet.generate_full = generate_full_parallel
 
 def main():
     parser = argparse.ArgumentParser(description='Distributed Aronson sequence generator.')
-    parser.add_argument('n', type=int, nargs='?', default=3,
+    parser.add_argument('n', type=int, nargs='?', default=4,
                         help='Number of iterations to generate (default: 3)')
+    parser.add_argument('check_semantics', type=bool, nargs='?', default=True,
+                        help='Computation method (faster for n>=4)')
     args = parser.parse_args()
-    run_generation(args.n)
+    run_generation(args.n, args.check_semantics)
     print('Done.')
 
 

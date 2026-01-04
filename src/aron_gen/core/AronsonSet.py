@@ -355,13 +355,14 @@ class AronsonSet:
             return False
         return True
 
-    # Currently infeasible from n >= 4
-    def generate_full(self, n_iterations: int, error_rate: float = 0.):
+    # Currently infeasible from n > 4
+    def generate_full(self, n_iterations: int, error_rate: float = 0., check_semantics=False):
         """
         Exhaustive generation of all Aronson sequences up to given length
         :param error_rate: degree of search precision, with 0. corresponding to no error and 1 to no sequences found.
         Is pessimistic- (sequences_found/total_sequences) >= (1 - error_rate) for n_iterations <= 4
         :param n_iterations: max length of generated sequences
+        :param check_semantics: set to True for large n_iterations
         :return: None
         """
 
@@ -405,10 +406,17 @@ class AronsonSet:
 
             cur_seqs = set()
             for perm in backtrack([], 0, initial_remaining, self.cur_iter):
-                # check only relevant sequences
-                seq = AronsonSequence(self.letter, perm, self.direction)
-                if self.is_correct(seq):
-                    cur_seqs.add(seq)
+                if check_semantics:
+                    # Faster for n_iterations>=4
+                    try:
+                        seq = AronsonSequence(self.letter, perm, self.direction, check_semantics=check_semantics)
+                        cur_seqs.add(seq)
+                    except VerificationError:
+                        continue
+                else:
+                    seq = AronsonSequence(self.letter, perm, self.direction)
+                    if seq.is_correct():
+                        cur_seqs.add(seq)
 
             self._update_iter(cur_seqs)
 

@@ -72,7 +72,7 @@ def worker_task(args):
                 letter,
                 perm,
                 direction,
-                error_check=True,
+                check_semantics=True,
                 ignore_errors=False,
             )
             valid_seqs.append(seq)

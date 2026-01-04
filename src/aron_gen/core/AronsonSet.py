@@ -368,6 +368,7 @@ class AronsonSet:
         def backtrack(current_perm, current_sum, remaining, max_len):
             if len(current_perm) == max_len:
                 if max_len > PRUNE_THRESH:
+                    # don't use metric for n>4 as we can't guarantee full generation
                     yield current_perm.copy()
                     return
 

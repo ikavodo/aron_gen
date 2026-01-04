@@ -7,6 +7,11 @@ from typing import Optional
 # global strings
 REPR_PREFIX = " is the "
 REPR_SUFFIX = " letter"
+
+# optimization
+# REPR_PREFIX_STRIP = "isthe"
+# REPR_SUFFIX_STRIP = "letter"
+
 REPR_FORWARD = " in this sentence, not counting commas and spaces"
 REPR_BACKWARD = "Not counting commas and spaces, in this sentence backwards "
 
@@ -74,42 +79,64 @@ class AronsonSequence:
             cls.num2words_dict[n] = (os, os.replace(" and", "").replace(", ", "").replace(" ", "").replace("-", ""))
         return cls.num2words_dict[n][0] if not stripped else cls.num2words_dict[n][1]
 
-    # TODO implement
     def _fast_verifier(self, elements):
-        pass
+
+        def _check_element(elem):
+            elem_idx = elem - 1
+            if s_buffer[elem_idx] != self.letter:
+                raise VerificationError("Generated sentence is semantically incorrect")
+
+        prefix = self.letter + REPR_PREFIX.replace(" ", "")
+        suffix = REPR_SUFFIX.replace(" ", "")
+        s_buffer = prefix if self.direction == Direction.FORWARD else suffix[::-1]
+        forward_idxs = []  # stack for forward references to resolve
+        for elem in elements:
+            ordinal_str = self.n2w(elem, stripped=True)
+            s_buffer += ordinal_str if self.direction == Direction.FORWARD else ordinal_str[::-1]
+            if elem > len(s_buffer):
+                forward_idxs.append(elem)
+                continue
+            else:
+                _check_element(elem)
+
+        # add last chunk and check forward referring elements
+        s_buffer += suffix if self.direction == Direction.FORWARD else prefix[::-1]
+        for elem in forward_idxs:
+            if elem > len(s_buffer):
+                # string complete, index over-reach
+                raise VerificationError("Generated sentence is semantically incorrect")
+            _check_element(elem)
 
     def __init__(self, letter: str, elements: Optional[list[int]] = None, direction: Direction = Direction.FORWARD,
-                 # change these later if desired
-                 *, error_check: bool = False, ignore_errors: bool = True):
+                 *, check_semantics: bool = False):
         """
         Initializes the AronsonSequence with the given letter, elements, and direction.
 
         :param letter: The letter used for the sequence.
         :param elements: A list of elements (positive integers) in the sequence.
         :param direction: of the sequence
+        :param check_semantics: of correctness
+        :param
         """
         elements = elements if elements is not None else []
         # error checking
-        self.check_elements(elements)
         self.check_letter(letter)
         self.check_direction(direction)
+        self.letter = letter.lower()
+        self.direction = direction
 
-        if error_check:
+        self.check_elements(elements)
+        if check_semantics:
             try:
                 self._fast_verifier(elements)
             except VerificationError:
-                if ignore_errors:
-                    pass
-                else:
-                    raise
+                raise
 
         # Deduplicate while preserving order
         seen = set()
         self.elements = [x for x in elements if not (x in seen or seen.add(x))]
         self.prefix = max(self.elements) if self.elements else 0
 
-        self.letter = letter.lower()
-        self.direction = direction
         # build internal fields relating to sentence representation
         self._update_sentence()
 

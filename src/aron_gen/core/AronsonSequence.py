@@ -8,10 +8,6 @@ from typing import Optional
 REPR_PREFIX = " is the "
 REPR_SUFFIX = " letter"
 
-# optimization
-# REPR_PREFIX_STRIP = "isthe"
-# REPR_SUFFIX_STRIP = "letter"
-
 REPR_FORWARD = " in this sentence, not counting commas and spaces"
 REPR_BACKWARD = "Not counting commas and spaces, in this sentence backwards "
 
@@ -79,7 +75,7 @@ class AronsonSequence:
             cls.num2words_dict[n] = (os, os.replace(" and", "").replace(", ", "").replace(" ", "").replace("-", ""))
         return cls.num2words_dict[n][0] if not stripped else cls.num2words_dict[n][1]
 
-    def _fast_verifier(self, elements):
+    def _verifier(self):
 
         def _check_element(elem):
             elem_idx = elem - 1
@@ -90,7 +86,7 @@ class AronsonSequence:
         suffix = REPR_SUFFIX.replace(" ", "")
         s_buffer = prefix if self.direction == Direction.FORWARD else suffix[::-1]
         forward_idxs = []  # stack for forward references to resolve
-        for elem in elements:
+        for elem in self.elements:
             ordinal_str = self.n2w(elem, stripped=True)
             s_buffer += ordinal_str if self.direction == Direction.FORWARD else ordinal_str[::-1]
             if elem > len(s_buffer):
@@ -124,58 +120,22 @@ class AronsonSequence:
         self.check_direction(direction)
         self.letter = letter.lower()
         self.direction = direction
-
         self.check_elements(elements)
-        if check_semantics:
-            try:
-                self._fast_verifier(elements)
-            except VerificationError:
-                raise
 
         # Deduplicate while preserving order
         seen = set()
         self.elements = [x for x in elements if not (x in seen or seen.add(x))]
         self.prefix = max(self.elements) if self.elements else 0
 
+        if check_semantics:
+            try:
+                # get full sentence with no spaces or commas
+                self._verifier()
+            except VerificationError:
+                raise
+
         # build internal fields relating to sentence representation
         self._update_sentence()
-
-    @property
-    def display_letter(self):
-        """
-        uppercase letter for representation
-        :return: uppercase
-        """
-
-        return self.letter.upper()
-
-    @staticmethod
-    def check_direction(direction: Direction):
-        """
-        Make sure direction is a Direction Enum Type
-        :param direction: of sequence
-        """
-        if not isinstance(direction, Direction):
-            raise ValueError(f"Invalid direction value: {direction}. Must be a Direction.")
-
-    @staticmethod
-    def check_elements(elements):
-        """
-        Make sure elements is a list with positive integers. Duplicates are allowed but filtered out
-        :param elements: of sequence
-        """
-
-        if not isinstance(elements, list) or not all(isinstance(i, int) and i > 0 for i in elements):
-            raise ValueError(f"Invalid elements: {elements}. Must be a list of positive integers.")
-
-    @staticmethod
-    def check_letter(letter):
-        """
-        check letter input is single alpha character
-        :param letter:
-        """
-        if not isinstance(letter, str) or len(letter) != 1 or not letter.isalpha():
-            raise ValueError(f"Invalid letter: {letter!r}. Must be a single alphabetic character.")
 
     def _update_sentence(self, elements=None):
         """
@@ -226,6 +186,43 @@ class AronsonSequence:
             ref = Refer.FORWARD
         # return position of ordinal within string representation, and referral type as a tuple.
         return range(pos, end), ref
+
+    @property
+    def display_letter(self):
+        """
+        uppercase letter for representation
+        :return: uppercase
+        """
+
+        return self.letter.upper()
+
+    @staticmethod
+    def check_direction(direction: Direction):
+        """
+        Make sure direction is a Direction Enum Type
+        :param direction: of sequence
+        """
+        if not isinstance(direction, Direction):
+            raise ValueError(f"Invalid direction value: {direction}. Must be a Direction.")
+
+    @staticmethod
+    def check_elements(elements):
+        """
+        Make sure elements is a list with positive integers. Duplicates are allowed but filtered out
+        :param elements: of sequence
+        """
+
+        if not isinstance(elements, list) or not all(isinstance(i, int) and i > 0 for i in elements):
+            raise ValueError(f"Invalid elements: {elements}. Must be a list of positive integers.")
+
+    @staticmethod
+    def check_letter(letter):
+        """
+        check letter input is single alpha character
+        :param letter:
+        """
+        if not isinstance(letter, str) or len(letter) != 1 or not letter.isalpha():
+            raise ValueError(f"Invalid letter: {letter!r}. Must be a single alphabetic character.")
 
     def has_forward_ref(self):
         """

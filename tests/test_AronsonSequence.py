@@ -3,7 +3,7 @@ from itertools import permutations
 
 from num2words import num2words
 from aron_gen.core.AronsonSequence import AronsonSequence, REPR_PREFIX, REPR_SUFFIX, Refer, Direction, REPR_FORWARD, \
-    REPR_BACKWARD
+    REPR_BACKWARD, VerificationError
 
 # take into account letter at beginning of sentence
 LEN_REPR_PREFIX = len(REPR_PREFIX.replace(" ", "")) + 1
@@ -193,6 +193,46 @@ class AronsonSequenceTests(unittest.TestCase):
         for seq, expected in test_cases:
             with self.subTest(seq=seq):
                 self.assertEqual(seq.is_correct(), expected)
+
+    def test_fast_verifier(self):
+        """
+        Test sequences using _fast_verifier / semantic_check to assert correctness.
+        """
+        test_cases = [
+            # backward referring
+            ('t', [1, 4, 11], Direction.FORWARD, True),
+            ('t', [3, 4, 11], Direction.BACKWARD, True),
+            # self referring
+            ('t', [10, 12], Direction.FORWARD, True),
+            ('t', [8, 14], Direction.BACKWARD, True),
+            # forward referring
+            ('t', [19], Direction.FORWARD, True),
+            ('t', [19], Direction.BACKWARD, True),
+            # all referring
+            ('t', [1, 12, 17, 30], Direction.FORWARD, True),
+            ('t', [3, 13, 21, 34], Direction.BACKWARD, True),
+            # incorrect sequences
+            ('t', [19, 100], Direction.FORWARD, False),
+            ('t', [19, 100], Direction.BACKWARD, False),
+            # trivial sequences
+            ('t', [], Direction.FORWARD, True),
+            ('t', [], Direction.BACKWARD, True),
+        ]
+
+        for letter, seq, direction, expected in test_cases:
+            with self.subTest(letter=letter, seq=seq, direction=direction):
+                if expected:
+                    # Should not raise
+                    try:
+                        AronsonSequence(letter, seq, direction,
+                                        check_semantics=True)
+                    except VerificationError:
+                        self.fail(f"Sequence {seq} incorrectly failed verification")
+                else:
+                    # Should raise VerificationError
+                    with self.assertRaises(VerificationError):
+                        AronsonSequence(letter, seq, direction,
+                                        check_semantics=True)
 
     def test_clear(self):
         empty = AronsonSequence('t')

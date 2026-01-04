@@ -73,7 +73,6 @@ def worker_task(args):
                 perm,
                 direction,
                 check_semantics=True,
-                ignore_errors=False,
             )
             valid_seqs.append(seq)
         except VerificationError:

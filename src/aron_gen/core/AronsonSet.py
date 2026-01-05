@@ -355,6 +355,33 @@ class AronsonSet:
             return False
         return True
 
+    def _backtrack(self, current_perm, current_sum, remaining, max_len, cur_ord_key, error_rate):
+        if len(current_perm) == max_len:
+            if max_len > PRUNE_THRESH:
+                # don't use metric for n>4 as we can't guarantee full generation
+                yield current_perm.copy()
+                return
+
+            mean = current_sum / max_len
+            metric = max(x - mean for x in current_perm)
+            upper_metric_bound = ceil(log2(max_len) * ORD_TABLE[cur_ord_key]) + 1
+
+            if metric <= (1 - error_rate) * upper_metric_bound:
+                yield current_perm.copy()
+
+            return
+
+        for elem in set(remaining):
+            if self.is_valid_extension(elem, current_perm):
+                yield from self._backtrack(
+                    current_perm + [elem],
+                    current_sum + elem,
+                    remaining - {elem},
+                    max_len,
+                    cur_ord_key,
+                    error_rate
+                )
+
     # Currently infeasible from n > 4
     def generate_full(self, n_iterations: int, error_rate: float = 0.):
         """
@@ -364,30 +391,6 @@ class AronsonSet:
         :param n_iterations: max length of generated sequences
         :return: None
         """
-
-        def backtrack(current_perm, current_sum, remaining, max_len):
-            if len(current_perm) == max_len:
-                if max_len > PRUNE_THRESH:
-                    # don't use metric for n>4 as we can't guarantee full generation
-                    yield current_perm.copy()
-                    return
-
-                mean = current_sum / max_len
-                metric = max(x - mean for x in current_perm)
-                upper_metric_bound = ceil(log2(max_len) * ORD_TABLE[cur_ord_key]) + 1
-
-                if metric <= (1 - error_rate) * upper_metric_bound:
-                    yield current_perm.copy()
-                return
-
-            for elem in set(remaining):
-                if self.is_valid_extension(elem, current_perm):
-                    yield from backtrack(
-                        current_perm + [elem],
-                        current_sum + elem,
-                        remaining - {elem},
-                        max_len
-                    )
 
         if n_iterations <= 0:
             return
@@ -404,11 +407,12 @@ class AronsonSet:
             initial_remaining = {x for x in range(1, upper_bound) if x not in self.non_elements}
 
             cur_seqs = set()
-            for perm in backtrack([], 0, initial_remaining, self.cur_iter):
+            for perm in self._backtrack([], 0, initial_remaining, self.cur_iter, cur_ord_key, error_rate):
                 # Faster for n_iterations>=4
                 try:
                     seq = AronsonSequence(self.letter, perm, self.direction, check_semantics=True)
                     cur_seqs.add(seq)
+
                 except VerificationError:
                     continue
 

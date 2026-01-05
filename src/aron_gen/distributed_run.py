@@ -26,13 +26,13 @@ def is_valid_extension(elem, non_elements, current_perm):
     )
 
 
-def backtrack_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate):
+def generate_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate):
     """
     Generate valid permutations starting from `elem`.
     Returns list of candidate perms (list of ints).
     """
 
-    def recurse(current_perm, current_sum, remaining):
+    def backtrack(current_perm, current_sum, remaining):
         if len(current_perm) == iteration:
             if iteration > PRUNE_THRESH:
                 return [current_perm.copy()]
@@ -42,10 +42,15 @@ def backtrack_perms(elem, initial_remaining, iteration, cur_ord_key, non_element
             if metric <= (1 - error_rate) * upper_bound:
                 return [current_perm.copy()]
             return []
+
+        results = extend_perm(current_perm, current_sum, remaining)
+        return results
+
+    def extend_perm(current_perm, current_sum, remaining):
         results = []
         for e in set(remaining):
             if is_valid_extension(e, non_elements, current_perm):
-                results.extend(recurse(
+                results.extend(backtrack(
                     current_perm + [e],
                     current_sum + e,
                     remaining - {e}
@@ -54,7 +59,7 @@ def backtrack_perms(elem, initial_remaining, iteration, cur_ord_key, non_element
 
     if not is_valid_extension(elem, non_elements, []):
         return []
-    return recurse([elem], elem, initial_remaining - {elem})
+    return backtrack([elem], elem, initial_remaining - {elem})
 
 
 def worker_task(args):
@@ -66,7 +71,7 @@ def worker_task(args):
      non_elements, letter, direction, error_rate) = args
 
     valid_seqs = []
-    perms = backtrack_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate)
+    perms = generate_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate)
     for perm in perms:
         try:
             seq = AronsonSequence(

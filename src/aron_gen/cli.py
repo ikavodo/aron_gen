@@ -7,7 +7,7 @@ DATA_DIR = BASE_DIR / "data"
 
 
 def run_generation(n):
-    dir_name = DATA_DIR / f"iters={n}"
+    dir_name = DATA_DIR / f"iters_{n}"
     dir_name.mkdir(parents=True, exist_ok=True)
 
     directions = [

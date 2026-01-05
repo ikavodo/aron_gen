@@ -21,6 +21,7 @@ def is_valid_extension(elem, non_elements, current_perm):
     return not (
             elem in non_elements or
             (elem - 1 in current_perm and elem - 2 in current_perm) or
+            (elem - 1 in current_perm and elem + 1 in current_perm) or  # middle
             (elem + 1 in current_perm and elem + 2 in current_perm)
     )
 

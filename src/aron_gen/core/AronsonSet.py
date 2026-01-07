@@ -3,9 +3,9 @@ from __future__ import annotations
 from enum import Enum
 from itertools import islice, combinations, permutations
 from math import log2, ceil
-from .AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX, VerificationError
+from .AronsonSequence import AronsonSequence, Direction, REPR_PREFIX, REPR_SUFFIX, VerificationError
 from collections import defaultdict, Counter
-from typing import Callable, Literal, Iterable
+from typing import Callable, Literal, Iterable, Iterator
 from contextlib import suppress
 
 # global: dictionary with maximum ordinal lengths per number of bits in decimal representation
@@ -356,51 +356,76 @@ class AronsonSet:
             return False
         return True
 
-    def _backtrack(self, current_perm, current_sum, remaining, max_len, cur_ord_key, error_rate):
-        if len(current_perm) == max_len:
-            if max_len > PRUNE_THRESH:
-                # don't use metric for n>4 as we can't guarantee full generation
-                yield current_perm.copy()
+    def _gen_valid_sequences(
+            self,
+            *,
+            initial_remaining: set[int],
+            iteration: int,
+            cur_ord_key: int,
+            error_rate: float,
+    ) -> Iterator["AronsonSequence"]:
+        """
+        Generator version of _backtrack:
+        - builds permutations incrementally
+        - applies the same pruning metric when iteration <= PRUNE_THRESH
+        - yields AronsonSequence objects (semantics-checked)
+        """
+
+        current: list[int] = []
+        remaining: set[int] = set(initial_remaining)
+        current_sum: int = 0
+
+        def rec(current_sum: int) -> Iterator["AronsonSequence"]:
+            # reached target length
+            if len(current) == iteration:
+                # pruning metric (only for small n where it's guaranteed/meaningful)
+                if iteration <= PRUNE_THRESH:
+                    mean = current_sum / iteration
+                    metric = max(x - mean for x in current)
+                    upper_metric_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
+                    if metric > (1 - error_rate) * upper_metric_bound:
+                        return
+
+                # build + validate semantics
+                try:
+                    yield AronsonSequence(
+                        self.letter,
+                        current,
+                        self.direction,
+                        check_semantics=True
+                    )
+                except VerificationError:
+                    return
                 return
 
-            mean = current_sum / max_len
-            metric = max(x - mean for x in current_perm)
-            upper_metric_bound = ceil(log2(max_len) * ORD_TABLE[cur_ord_key]) + 1
+            # extend permutation
+            # iterate over a snapshot because we mutate remaining
+            for e in list(remaining):
+                if self.is_valid_extension(e, current):
+                    current.append(e)
+                    remaining.remove(e)
 
-            if metric <= (1 - error_rate) * upper_metric_bound:
-                yield current_perm.copy()
+                    yield from rec(current_sum + e)
 
-            return
+                    remaining.add(e)
+                    current.pop()
 
-        for elem in set(remaining):
-            if self.is_valid_extension(elem, current_perm):
-                yield from self._backtrack(
-                    current_perm + [elem],
-                    current_sum + elem,
-                    remaining - {elem},
-                    max_len,
-                    cur_ord_key,
-                    error_rate
-                )
+        yield from rec(current_sum)
 
     # Currently infeasible from n > 4
-    def generate_full(self, n_iterations: int, error_rate: float = 0.):
+    def generate_full(self, n_iterations: int, error_rate: float = 0.0):
         """
         Exhaustive generation of all Aronson sequences up to given length
-        :param error_rate: degree of search precision, with 0. corresponding to no error and 1 to no sequences found.
-        Is pessimistic- (sequences_found/total_sequences) >= (1 - error_rate) for n_iterations <= 4
-        :param n_iterations: max length of generated sequences
-        :return: None
         """
 
         if n_iterations <= 0:
             return
 
-        # generation engine
         cur_ord_key = ORD_INITIAL
 
         while self.cur_iter < n_iterations:
             self.cur_iter += 1
+
             upper_bound = self.cur_iter * ORD_TABLE[cur_ord_key] + 2 * self.get_prefix_idx()
             if upper_bound >= 10 ** (cur_ord_key + 1):
                 cur_ord_key += 1
@@ -408,14 +433,15 @@ class AronsonSet:
             initial_remaining = {x for x in range(1, upper_bound) if x not in self.non_elements}
 
             cur_seqs = set()
-            for perm in self._backtrack([], 0, initial_remaining, self.cur_iter, cur_ord_key, error_rate):
-                # Faster for n_iterations>=4
-                try:
-                    seq = AronsonSequence(self.letter, perm, self.direction, check_semantics=True)
-                    cur_seqs.add(seq)
 
-                except VerificationError:
-                    continue
+            # NEW: directly yield AronsonSequence from generator
+            for seq in self._gen_valid_sequences(
+                    initial_remaining=initial_remaining,
+                    iteration=self.cur_iter,
+                    cur_ord_key=cur_ord_key,
+                    error_rate=error_rate,
+            ):
+                cur_seqs.add(seq)
 
             self._update_iter(cur_seqs)
 

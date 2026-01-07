@@ -25,66 +25,44 @@ def is_valid_extension(elem, non_elements, current_perm):
             (elem + 1 in current_perm and elem + 2 in current_perm)
     )
 
-
-def generate_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate):
-    """
-    Generate valid permutations starting from `elem`.
-    Returns list of candidate perms (list of ints).
-    """
-
-    def backtrack(current_perm, current_sum, remaining):
-        if len(current_perm) == iteration:
-            if iteration > PRUNE_THRESH:
-                return [current_perm.copy()]
-            mean = current_sum / iteration
-            metric = max(x - mean for x in current_perm)
-            upper_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
-            if metric <= (1 - error_rate) * upper_bound:
-                return [current_perm.copy()]
-            return []
-
-        results = extend_perm(current_perm, current_sum, remaining)
-        return results
-
-    def extend_perm(current_perm, current_sum, remaining):
-        results = []
-        for e in set(remaining):
-            if is_valid_extension(e, non_elements, current_perm):
-                results.extend(backtrack(
-                    current_perm + [e],
-                    current_sum + e,
-                    remaining - {e}
-                ))
-        return results
-
+def generate_valid_seqs(elem, initial_remaining, iteration, cur_ord_key, non_elements,
+                        letter, direction, error_rate):
     if not is_valid_extension(elem, non_elements, []):
-        return []
-    return backtrack([elem], elem, initial_remaining - {elem})
+        return
+    current = [elem]
+    remaining = set(initial_remaining)
+    remaining.remove(elem)
+    current_sum = elem
 
+    def rec(current_sum, remaining):
+        if len(current) == iteration:
+            if iteration <= PRUNE_THRESH:
+                mean = current_sum / iteration
+                metric = max(x - mean for x in current)
+                upper_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
+                if metric > (1 - error_rate) * upper_bound:
+                    return
+            try:
+                yield AronsonSequence(letter, current, direction, check_semantics=True)
+            except VerificationError:
+                return
+            return
+
+        for e in list(remaining):
+            if is_valid_extension(e, non_elements, current):
+                current.append(e)
+                remaining.remove(e)
+                yield from rec(current_sum + e, remaining)
+                remaining.add(e)
+                current.pop()
+
+    yield from rec(current_sum, remaining)
 
 def worker_task(args):
-    """
-    args: (elem, initial_remaining, iteration, cur_ord_key, non_elements, letter, direction, error_rate)
-    Generates AronsonSequence instances that pass is_correct.
-    """
     (elem, initial_remaining, iteration, cur_ord_key,
      non_elements, letter, direction, error_rate) = args
-
-    valid_seqs = []
-    perms = generate_perms(elem, initial_remaining, iteration, cur_ord_key, non_elements, error_rate)
-    for perm in perms:
-        try:
-            seq = AronsonSequence(
-                letter,
-                perm,
-                direction,
-                check_semantics=True,
-            )
-            valid_seqs.append(seq)
-        except VerificationError:
-            continue
-
-    return valid_seqs
+    return list(generate_valid_seqs(elem, initial_remaining, iteration, cur_ord_key,
+                                    non_elements, letter, direction, error_rate))
 
 
 # --------------------------------------------------

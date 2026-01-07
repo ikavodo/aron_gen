@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from enum import Enum
 from itertools import islice, combinations, permutations
 from math import log2, ceil
 from .AronsonSequence import AronsonSequence, Direction, Refer, REPR_PREFIX, REPR_SUFFIX, VerificationError
 from collections import defaultdict, Counter
-from typing import Callable, Literal
+from typing import Callable, Literal, Iterable
 from contextlib import suppress
 
 # global: dictionary with maximum ordinal lengths per number of bits in decimal representation
@@ -510,12 +511,13 @@ class AronsonSet:
         :return: set of seen sequences including refs
 
         """
-        if isinstance(refs, list):
-            refs = set(refs)
-        elif isinstance(refs, Refer):
+
+        if isinstance(refs, Enum):
             refs = {refs}
-        elif not isinstance(refs, set):
-            raise ValueError("input argument must be iterable or a Direction type")
+        elif isinstance(refs, Iterable) and not isinstance(refs, (str, bytes)):
+            refs = set(refs)
+        else:
+            raise ValueError("refs must be a Refer or an iterable of Refer")
 
         filtered = defaultdict(set)
 

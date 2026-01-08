@@ -59,9 +59,14 @@ class AronsonSet:
         self.direction = direction  # Sequence direction
         self.iter_dict = defaultdict(set)  # init empty dictionary
         self.cur_iter = 0  # no generating iterations yet
-        self.seen_seqs = {AronsonSequence(self.letter, [], self.direction)}  # every set contains the empty sequence
-        self.iter_dict[self.cur_iter] = self.seen_seqs.copy()  # initial set
-        self.subset_dict = defaultdict(set)  # used for fast generation
+        emp = AronsonSequence(self.letter, [], self.direction)
+        self.iter_dict[self.cur_iter] = {emp}  # single source of truth
+        self.subset_dict = defaultdict(set)
+
+    @property
+    def seen_seqs(self) -> set[AronsonSequence]:
+        # single source of truth: iter_dict
+        return {seq for seqs in self.iter_dict.values() for seq in seqs}
 
     @property
     def display_letter(self):
@@ -173,13 +178,7 @@ class AronsonSet:
         )
 
     def _update_iter(self, seqs: set[AronsonSequence]):
-        """
-        Update iteration dictionary and seen sequences
-        :param seqs: for updating
-        :return: None
-        """
         self.iter_dict[self.cur_iter].update(seqs)
-        self.seen_seqs.update(seqs)
 
     @staticmethod
     def backward_search(seq: AronsonSequence):
@@ -381,7 +380,11 @@ class AronsonSet:
                 # pruning metric (only for small n where it's guaranteed/meaningful)
                 if iteration <= PRUNE_THRESH:
                     mean = current_sum / iteration
+                    # max L1 distance to mean over sequence elements
                     metric = max(x - mean for x in current)
+                    # n = 5:
+                    # log2(iteration) is off by ~ 9e-03
+                    # log2(iteration+1) is off by ~ 2.143e-05
                     upper_metric_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
                     if metric > (1 - error_rate) * upper_metric_bound:
                         return
@@ -515,19 +518,16 @@ class AronsonSet:
         return AronsonSet.from_dict(filtered)
 
     def filter_symmetric(self, seq_len=0):
-        """
-        return all sequences for which all permutations are also in set
-        :param seq_len: to start filtering from
-        :return: set of such sequences
-        """
-        filtered: dict[int: set[AronsonSequence]] = defaultdict(set[AronsonSequence])
+        filtered = defaultdict(set)
+        seen = self.seen_seqs  # compute once
+
         for n_iter, seqs in self.iter_dict.items():
             for seq in seqs:
-                seq_perm = {AronsonSequence(self.letter, list(perm), self.direction) for perm in
-                            permutations(seq, len(seq))}
-                if all(perm in self.seen_seqs for perm in seq_perm) and len(seq) >= seq_len:
-                    # Perhaps not all permutations generated within same iteration
+                seq_perm = {AronsonSequence(self.letter, list(perm), self.direction)
+                            for perm in permutations(seq, len(seq))}
+                if all(perm in seen for perm in seq_perm) and len(seq) >= seq_len:
                     filtered[n_iter].add(seq)
+
         return AronsonSet.from_dict(filtered)
 
     def filter_refs(self, refs):
@@ -555,19 +555,20 @@ class AronsonSet:
 
         return AronsonSet.from_dict(filtered)
 
-    def filter_monotonic(self, ascending=True):
+    def filter_monotonic(self, ascending: bool = True):
         """
-        Filter out of instance only those sets which are monotonic with respect to ascending/descending order
-        :param ascending: True by default
-        :return: monotonic sets
+        Filter out of instance only those sets which are monotonic with respect to ascending/descending order.
         """
-        filtered = set()
         condition = 1 if ascending else -1
-        for seq in self.seen_seqs:
+
+        seen = self.seen_seqs  # compute once (IMPORTANT with computed property)
+        filtered = set()
+
+        for seq in seen:
             tuple_mono = seq.is_monotonic()
-            # Take trivially monotonic sequences in either case
             if tuple_mono[0] and (tuple_mono[1] is None or tuple_mono[1] == condition):
                 filtered.add(seq)
+
         return AronsonSet.from_set(filtered)
 
     def find_non_elements(self, n_iter=None):
@@ -605,7 +606,9 @@ class AronsonSet:
     def copy(self):
         """ shallow copy for new instance"""
         new_set = AronsonSet(self.letter, self.direction)
-        new_set._set_iter_dict(self.iter_dict)
+        # needs to be a deep copy
+        iter_dict_cpy = self.iter_dict.copy()
+        new_set._set_iter_dict(iter_dict_cpy)
         return new_set
 
     def clear(self):
@@ -614,11 +617,16 @@ class AronsonSet:
 
     # Setters
     def _set_iter_dict(self, new_dict):
-        """ main setter, of iteration dictionary and relevant set of seen sequences"""
-        emp_seq = {AronsonSequence(self.letter, [], self.direction)}
-        new_dict = new_dict or {0: emp_seq}
+        emp_seq = AronsonSequence(self.letter, [], self.direction)
+        if not new_dict:
+            new_dict = {0: {emp_seq}}
+        else:
+            # ensure empty sequence exists somewhere
+            if not any(emp_seq in v for v in new_dict.values()):
+                new_dict = new_dict.copy()
+                new_dict.setdefault(0, set()).add(emp_seq)
+
         self.iter_dict = new_dict
-        self.seen_seqs = set(seq for seqs in new_dict.values() for seq in seqs)
         self.cur_iter = max(new_dict.keys())
 
     def flip_direction(self):
@@ -689,22 +697,18 @@ class AronsonSet:
         return next(iter(self.seen_seqs))
 
     def discard(self, seq: AronsonSequence):
-        """
-        Discard a sequence from a set.
-        :param seq: to be discarded
-        :return: None
-        """
-        # no error-checking: discard does nothing if seq is misaligned w.r.t. direction or letter
         for seqs in self.iter_dict.values():
             seqs.discard(seq)
-        self.get_seen_seqs().discard(seq)
 
     @property
     def max(self):
-        """ maximum element seen in some sequence in the set"""
-        if len(self.seen_seqs) == 1:
+        """maximum element seen in some sequence in the set"""
+        seen = self.seen_seqs  # compute once
+
+        if len(seen) == 1:
             raise ValueError("Set contains only the empty sequence")
-        return max(seq.get_prefix() for seq in self.seen_seqs)
+
+        return max(seq.get_prefix() for seq in seen)
 
     def get_len_dict(self, generated_full=False):
         """

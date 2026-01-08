@@ -41,7 +41,9 @@ def generate_valid_seqs(elem, initial_remaining, iteration, cur_ord_key, non_ele
                 metric = max(x - mean for x in current)
                 upper_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
                 if metric > (1 - error_rate) * upper_bound:
+                    # sequence statistically incorrect
                     return
+
             try:
                 yield AronsonSequence(letter, current, direction, check_semantics=True)
             except VerificationError:

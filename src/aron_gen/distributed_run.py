@@ -2,11 +2,11 @@
 import os
 import argparse
 import multiprocessing
-from math import ceil, log2
 
 from aron_gen.cli import run_generation
 from aron_gen.core.AronsonSequence import VerificationError
-from aron_gen.core.AronsonSet import AronsonSequence, AronsonSet, PRUNE_THRESH, ORD_INITIAL, ORD_TABLE
+from aron_gen.core.AronsonSet import AronsonSequence, AronsonSet, PRUNE_THRESH, UPPER_METRIC_BOUND, ORD_INITIAL, \
+    ORD_TABLE
 
 # Determine number of worker processes from Slurm or default to all CPUs
 default_procs = multiprocessing.cpu_count()
@@ -25,6 +25,7 @@ def is_valid_extension(elem, non_elements, current_perm):
             (elem + 1 in current_perm and elem + 2 in current_perm)
     )
 
+
 def generate_valid_seqs(elem, initial_remaining, iteration, cur_ord_key, non_elements,
                         letter, direction, error_rate):
     if not is_valid_extension(elem, non_elements, []):
@@ -39,7 +40,7 @@ def generate_valid_seqs(elem, initial_remaining, iteration, cur_ord_key, non_ele
             if iteration <= PRUNE_THRESH:
                 mean = current_sum / iteration
                 metric = max(x - mean for x in current)
-                upper_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
+                upper_bound = UPPER_METRIC_BOUND(iteration, cur_ord_key)
                 if metric > (1 - error_rate) * upper_bound:
                     # sequence statistically incorrect
                     return
@@ -59,6 +60,7 @@ def generate_valid_seqs(elem, initial_remaining, iteration, cur_ord_key, non_ele
                 current.pop()
 
     yield from rec(current_sum, remaining)
+
 
 def worker_task(args):
     (elem, initial_remaining, iteration, cur_ord_key,

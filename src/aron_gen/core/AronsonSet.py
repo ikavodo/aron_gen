@@ -12,9 +12,9 @@ from contextlib import suppress
 ORD_TABLE = {i + 1: j for i, j in enumerate([7, 14, 26, 39, 45, 56, 69, 75, 87, 99])}
 # initial key for maximum ordinal length
 ORD_INITIAL = 2
-# for n_iters > 4 don't prune, as don't know enough at this point
-PRUNE_THRESH = 4
-
+# for n_iters > 5 don't prune, as don't know enough at this point
+PRUNE_THRESH = 5
+UPPER_METRIC_BOUND = lambda n, key: ceil((log2(n) + 1) * ORD_TABLE[key])
 
 # Exception classes
 
@@ -382,10 +382,7 @@ class AronsonSet:
                     mean = current_sum / iteration
                     # max L1 distance to mean over sequence elements
                     metric = max(x - mean for x in current)
-                    # n = 5:
-                    # log2(iteration) is off by ~ 9e-03
-                    # log2(iteration+1) is off by ~ 2.143e-05
-                    upper_metric_bound = ceil(log2(iteration) * ORD_TABLE[cur_ord_key]) + 1
+                    upper_metric_bound = UPPER_METRIC_BOUND(iteration, cur_ord_key)
                     if metric > (1 - error_rate) * upper_metric_bound:
                         return
 

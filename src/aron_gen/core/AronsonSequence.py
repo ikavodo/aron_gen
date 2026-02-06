@@ -125,7 +125,6 @@ class AronsonSequence:
         # Deduplicate while preserving order
         seen = set()
         self.elements = [x for x in elements if not (x in seen or seen.add(x))]
-        self.prefix = max(self.elements) if self.elements else 0
         verifier_output = None
         if check_semantics:
             try:
@@ -203,6 +202,10 @@ class AronsonSequence:
 
         return self.letter.upper()
 
+    @property
+    def max_elem(self) -> int:
+        return max(self.elements, default=0)
+
     @staticmethod
     def check_direction(direction: Direction):
         """
@@ -265,14 +268,14 @@ class AronsonSequence:
         the positions of the letter in the sentence match the elements.
         :return: True if the sequence is prefix-complete, False otherwise.
         """
-        return self.get_occurrences(idx=self.prefix) == set(self.elements)
+        return self.get_occurrences(idx=self.max_elem) == set(self.elements)
 
     def get_prefix_missing(self):
         """
         Used for finding missing occurrences of the letter backwards from maximum index
         :return: True if the sequence is prefix-complete, False otherwise.
         """
-        return self.get_occurrences(idx=self.prefix).difference(set(self.elements))
+        return self.get_occurrences(idx=self.max_elem).difference(set(self.elements))
 
     def is_empty(self):
         """ if is empty instance"""
@@ -326,7 +329,6 @@ class AronsonSequence:
 
         # Reduced computation if appending
         self._update_sentence(new_elements if append else None)
-        self.prefix = max(self.elements) if self.elements else 0
 
     def append_elements(self, new_elements: list[int]):
         """
@@ -404,13 +406,6 @@ class AronsonSequence:
         """
         return self.refer_dict
 
-    def get_prefix(self):
-        """
-        Getter for the prefix.
-        :return: The referral dictionary.
-        """
-        return self.prefix
-
     # operator overloading
     def __add__(self, other):
         """
@@ -470,6 +465,15 @@ class AronsonSequence:
         """
         return isinstance(other, AronsonSequence) and self.elements == other.get_elements() and \
             self.display_letter == other.get_letter() and self.direction == other.get_direction()
+
+    def __lt__(self, other):
+        """
+        < operator, Compares two Aronson sequences w.r.t. prefix element
+        :param other: The other AronsonSequence to compare with.
+        :return: True if the sequences are equal, False otherwise.
+        """
+        return (isinstance(other, AronsonSequence) and self.display_letter == other.get_letter() and
+                self.direction == other.get_direction() and self.max_elem < other.max_elem)
 
     def copy(self):
         """

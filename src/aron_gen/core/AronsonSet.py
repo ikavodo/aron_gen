@@ -16,6 +16,7 @@ ORD_INITIAL = 2
 PRUNE_THRESH = 5
 UPPER_METRIC_BOUND = lambda n, key: ceil((log2(n) + 1) * ORD_TABLE[key])
 
+
 # Exception classes
 
 
@@ -201,7 +202,7 @@ class AronsonSet:
         :param seq: An optional AronsonSequence to generate from.
         :return: A generator yielding new indices for the sequence.
         """
-        idx, s = seq.get_prefix(), seq.get_sentence()
+        idx, s = seq.max_elem, seq.get_sentence()
         pref_idx = self.get_prefix_idx()
         s = s[idx:-pref_idx] if self.direction == Direction.FORWARD else s[pref_idx: -idx if idx else None][::-1]
         while True:
@@ -584,7 +585,7 @@ class AronsonSet:
         search_set = self.iter_dict[n_iter] if n_iter is not None else self.seen_seqs
         seen_elems = {elem for seq in search_set for elem in seq}
         # set has at least one non-empty sequence-> max is defined
-        return set(range(1, self.max)) - seen_elems
+        return set(range(1, self.max_elem)) - seen_elems
 
     def get_elements(self):
         """ get all elements appearing within a given sequence within the set"""
@@ -698,14 +699,14 @@ class AronsonSet:
             seqs.discard(seq)
 
     @property
-    def max(self):
+    def max_elem(self):
         """maximum element seen in some sequence in the set"""
         seen = self.seen_seqs  # compute once
 
         if len(seen) == 1:
             raise ValueError("Set contains only the empty sequence")
 
-        return max(seq.get_prefix() for seq in seen)
+        return max(seq.max_elem for seq in seen)
 
     def get_len_dict(self, generated_full=False):
         """
@@ -849,4 +850,4 @@ class AronsonSet:
 
     def __repr__(self):
         """ repr() operator, prints repr() method of sequences by iteration (starting with empty sequence)"""
-        return "\n".join(repr(seq) for i in sorted(self.iter_dict) for seq in self.iter_dict[i])
+        return "\n".join(repr(seq) for i in sorted(self.iter_dict) for seq in self.iter_dict[i] if not seq.is_empty())

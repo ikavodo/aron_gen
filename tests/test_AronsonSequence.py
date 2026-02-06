@@ -313,7 +313,7 @@ class AronsonSequenceTests(unittest.TestCase):
             with self.subTest(seq=seq):
                 self.assertEqual(seq.is_complete(), expected)
 
-    def test_prefix(self):
+    def test_max_elem(self):
         test_cases = [
             (AronsonSequence('t'), 0),
             (AronsonSequence('t', [], Direction.BACKWARD), 0),
@@ -323,7 +323,7 @@ class AronsonSequenceTests(unittest.TestCase):
 
         for seq, expected in test_cases:
             with self.subTest(seq=seq):
-                self.assertEqual(seq.get_prefix(), expected)
+                self.assertEqual(seq.max_elem, expected)
 
     def test_prefix_complete(self):
         test_cases = [
@@ -367,7 +367,7 @@ class AronsonSequenceTests(unittest.TestCase):
                         self.assertIn(elem, seq.get_elements())
                     # When append=True, ensure the original elements are retained
                     self.assertIn(seq_repr[:-suffix_ind], str(seq))
-                    self.assertEqual(seq.get_prefix(), max([3, 4]))
+                    self.assertEqual(seq.max_elem, max([3, 4]))
                 else:
                     for elem in prev_elements:
                         self.assertNotIn(elem, seq.get_elements())
